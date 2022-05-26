@@ -62,120 +62,49 @@ const initialValue: Descendant[] = [
 export function RichTextEditor() {
   const editor = useMemo(() => withReact(createEditor()), []);
 
-  function transformInHeadingOneElement() {
+  function transformElementIn(
+    thisElement: "h1" | "h2" | "h3" | "code" | "ul" | "link"
+  ) {
     const [match] = Editor.nodes(editor, {
-      match: (n) => Element.isElement(n) && n.type === "h1",
+      match: (n) => Element.isElement(n) && n.type === thisElement,
     });
 
-    Transforms.setNodes(
-      editor,
-      { type: match ? "paragraph" : "h1" },
-      { match: (n) => Editor.isBlock(editor, n) }
-    );
+    if (thisElement === "link") {
+      Transforms.setNodes(
+        editor,
+        {
+          type: match ? "paragraph" : thisElement,
+          url: prompt("What's the URL?"),
+        },
+        { match: (n) => Editor.isBlock(editor, n) }
+      );
+    } else {
+      Transforms.setNodes(
+        editor,
+        {
+          type: match ? "paragraph" : thisElement,
+        },
+        { match: (n) => Editor.isBlock(editor, n) }
+      );
+    }
   }
 
-  function transformInHeadingTwoElement() {
+  function transformTextStyleIn(thisStyle: "bold" | "italic" | "underline") {
     const [match] = Editor.nodes(editor, {
-      match: (n) => Element.isElement(n) && n.type === "h2",
+      match: (n) => Text.isText(n) && n[thisStyle] === true,
     });
 
     Transforms.setNodes(
       editor,
-      { type: match ? "paragraph" : "h2" },
-      { match: (n) => Editor.isBlock(editor, n) }
-    );
-  }
-
-  function transformInHeadingThreeElement() {
-    const [match] = Editor.nodes(editor, {
-      match: (n) => Element.isElement(n) && n.type === "h3",
-    });
-
-    Transforms.setNodes(
-      editor,
-      { type: match ? "paragraph" : "h3" },
-      { match: (n) => Editor.isBlock(editor, n) }
-    );
-  }
-
-  function transformInBoldText() {
-    const [match] = Editor.nodes(editor, {
-      match: (n) => Text.isText(n) && n.bold === true,
-    });
-
-    Transforms.setNodes(
-      editor,
-      { bold: match ? false : true },
+      { [thisStyle]: match ? false : true },
       { match: (n) => Text.isText(n), split: true }
     );
   }
 
-  function transformInItalicText() {
-    const [match] = Editor.nodes(editor, {
-      match: (n) => Text.isText(n) && n.italic === true,
-    });
-
-    Transforms.setNodes(
-      editor,
-      { italic: match ? false : true },
-      { match: (n) => Text.isText(n), split: true }
-    );
-  }
-
-  function transformInUnderLineText() {
-    const [match] = Editor.nodes(editor, {
-      match: (n) => Text.isText(n) && n.underline === true,
-    });
-
-    Transforms.setNodes(
-      editor,
-      { underline: match ? false : true },
-      { match: (n) => Text.isText(n), split: true }
-    );
-  }
-
-  function transformInCodeElement() {
-    const [match] = Editor.nodes(editor, {
-      match: (n) => Element.isElement(n) && n.type === "code",
-    });
-
-    Transforms.setNodes(
-      editor,
-      { type: match ? "paragraph" : "code" },
-      { match: (n) => Editor.isBlock(editor, n) }
-    );
-  }
-
-  function transformInUnorderedListElement() {
-    const [match] = Editor.nodes(editor, {
-      match: (n) => Element.isElement(n) && n.type === "ul",
-    });
-
-    Transforms.setNodes(
-      editor,
-      { type: match ? "paragraph" : "ul" },
-      { match: (n) => Editor.isBlock(editor, n) }
-    );
-  }
-
-  function setElementAlign(direction: "left" | "center" | "right") {
+  function changeElementAlignTo(direction: "left" | "center" | "right") {
     Transforms.setNodes(
       editor,
       { align: direction },
-      { match: (n) => Editor.isBlock(editor, n) }
-    );
-  }
-
-  function transformInLinkElement() {
-    const [match] = Editor.nodes(editor, {
-      match: (n) => Element.isElement(n) && n.type === "link",
-    });
-
-    let link = prompt("What's the URL?");
-
-    Transforms.setNodes(
-      editor,
-      { type: match ? "paragraph" : "link", url: `https://${link}` },
       { match: (n) => Editor.isBlock(editor, n) }
     );
   }
@@ -213,19 +142,71 @@ export function RichTextEditor() {
   return (
     <StyledMain>
       <RickTextButtons
-        transformInHeadingOneElement={transformInHeadingOneElement}
-        transformInHeadingTwoElement={transformInHeadingTwoElement}
-        transformInHeadingThreeElement={transformInHeadingThreeElement}
-        transformInCodeElement={transformInCodeElement}
-        transformInBoldText={transformInBoldText}
-        transformInItalicText={transformInItalicText}
-        transformInUnderLineText={transformInUnderLineText}
-        transformInUnorderedListElement={transformInUnorderedListElement}
-        setElementAlign={setElementAlign}
-        transformInLinkElement={transformInLinkElement}
+        transformElementIn={transformElementIn}
+        transformTextStyleIn={transformTextStyleIn}
+        changeElementAlignTo={changeElementAlignTo}
       />
       <Slate editor={editor} value={initialValue}>
-        <Editable renderElement={renderElement} renderLeaf={renderLeaf} />
+        <Editable
+          onKeyDown={(event) => {
+            if (!event.ctrlKey) return;
+
+            switch (event.key) {
+              case "b": {
+                event.preventDefault();
+                transformTextStyleIn("bold");
+                break;
+              }
+              case "i": {
+                event.preventDefault();
+                transformTextStyleIn("italic");
+                break;
+              }
+              case "u": {
+                event.preventDefault();
+                transformTextStyleIn("underline");
+                break;
+              }
+              case "c": {
+                event.preventDefault();
+                transformElementIn("code");
+                break;
+              }
+              case "k": {
+                event.preventDefault();
+                transformElementIn("link");
+                break;
+              }
+            }
+
+            if (!event.altKey) return;
+
+            switch (event.key) {
+              case "¹": {
+                event.preventDefault();
+                transformElementIn("h1");
+                break;
+              }
+              case "²": {
+                event.preventDefault();
+                transformElementIn("h2");
+                break;
+              }
+              case "³": {
+                event.preventDefault();
+                transformElementIn("h3");
+                break;
+              }
+              case "u": {
+                event.preventDefault();
+                transformElementIn("ul");
+                break;
+              }
+            }
+          }}
+          renderElement={renderElement}
+          renderLeaf={renderLeaf}
+        />
       </Slate>
     </StyledMain>
   );
